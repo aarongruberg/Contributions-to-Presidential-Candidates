@@ -1,0 +1,624 @@
+Financial Contributions Made to Presidential Candidates by Aaron Gruberg
+========================================================
+
+> **Tip**: One of the requirements of this project is that your code follows
+good formatting techniques, including limiting your lines to 80 characters or
+less. If you're using RStudio, go into Preferences \> Code \> Display to set up
+a margin line to help you keep track of this guideline!
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(readxl)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+setwd("C:/Users/Aaron/Downloads")
+
+CA <- read.csv(file = "CA.csv", row.names = NULL)
+
+colnames(CA) <- c(colnames(CA)[-1],"x")
+
+# This added a dummy column named "x" that we need to remove
+CA$x <- NULL 
+```
+# Data Description
+
+```{r echo=FALSE, Data_Description}
+# Describe the data
+summary(CA)
+```
+> Our dataset consists of 18 variables with 1304346 observations
+
+# Univariate Plots Section
+
+```{r echo=FALSE, warning=FALSE, Histograms}
+# Histogram of the number of people who gave each amount
+
+ggplot(aes(x = contb_receipt_amt), data = CA) +
+  geom_histogram(bins = 250) +
+  scale_x_continuous(limits = c(0, 5000))
+
+
+# Histogram of the log of the number of people who gave each amount
+
+ggplot(aes(x = contb_receipt_amt), data = CA) +
+  geom_histogram(bins = 250) +
+  scale_x_continuous(limits = c(0, 5000)) +
+  scale_y_log10()
+```
+
+> The count of contribution amounts was very spread out.  There appear to be large gaps in the first histogram between contributions of $500 and $3000.  Once I applied a log10() scale to the y axis these smaller counts were visible. 
+
+```{r echo=FALSE, warning=FALSE, not_employed}
+# Plot of contributions top candidates received from unemployed people
+
+ggplot(data = subset(CA, CA$contbr_employer == 'NOT EMPLOYED'
+                      & CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco'), aes(x = cand_nm)) +
+  geom_histogram(stat = "count") 
+```
+
+> This is a histogram of the number of contributions top candidates received from unemployed people.  Bernie Sanders received the most contributions from this group of people.
+
+```{r echo=FALSE, warning=FALSE, Univariate_Plots}
+# Plot of contributions top candidates received from employed people
+
+ggplot(data = subset(CA, (CA$contbr_employer != 'NOT EMPLOYED' 
+                     | CA$contbr_employer != 'RETIRED')
+                     & (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco')), aes(x = cand_nm)) +
+  geom_histogram(stat = "count") 
+```
+
+> This is the number of contributions top candidates received from employed people.  Hillary Clinton received the most contributions from employed people.
+
+```{r echo=FALSE, warning=FALSE, frequency}
+
+### Amount vs Date
+### Change the date format by adding new date column
+CA$contb_receipt_dt_date <- as.Date(CA$contb_receipt_dt, "%d-%b-%y")
+
+### Add new columns for Year, Day, Month
+CA$year = as.numeric(format(CA$contb_receipt_dt_date, format = "%Y"))
+CA$month = as.numeric(format(CA$contb_receipt_dt_date, format = "%m"))
+CA$day = as.numeric(format(CA$contb_receipt_dt_date, format = "%d"))
+
+# Frequency Plot of Total Contributions vs Date, grouped by candidate name.
+ggplot(subset(CA, (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\'')),  aes(contb_receipt_dt_date, colour = cand_nm)) +
+  geom_freqpoly(binwidth = 20)
+
+```
+
+> This is a frequency plot of the number of contributions received by date, grouped by candidate name.  Donald Trump did not receive many contributions until very close to the election date.
+
+```{r echo=FALSE, warning=FALSE, summary}
+# Summary of the number of contributions made by each profession
+summary(CA$contbr_employer)
+```
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+> There are 1304346 transactions in the dataset with 18 features(cmte_id, cand_id, cand_nm, contbr_name, contbr_city, contbr_state, contbr_zip, contbr_employer, contbr_occupation, contb_receipt_amt, contb_receipt_dt, receipt_desc, memo_cd, memo_text, form_tp, file_num, tran_id, election_tp).  Most variables in the original dataset were categorical.
+
+### What is/are the main feature(s) of interest in your dataset?
+
+> The main features in the dataset are contb_receipt_amt and cand_nm.  I'm interested in the amount of money going to a particular candidate and how it varies across categorical variables such as employment status.  
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+
+> I also examine contb_receipt_dt to see how often a particular contribution is made as we get closer to the election date.
+
+### Did you create any new variables from existing variables in the dataset?
+
+> I created a variable called contb_receipt_dt_date which converts the date format from '26-APR-16' to '2016-04-26'.  Then I added 3 variables for the 'day', 'month', 'year'.
+
+> I created a variable 'total_contbr' to sum all the contributions a particular candidate receives on a particuluar date, and 'max_total_contbr' to find the cumulative sum a candidate received from all contributors on a particular date.
+
+> I created the variable 'contbr_industry' to group the 'contbr_occupation' values into BLUE COLLAR, WHITE COLLAR, MILITARY, STUDENT, UNEMPLOYED.
+
+> I created the variable 'contbr_county' so I could group the values in the 'contbr_city' column and include this geographical data in my plots.  'contbr_county' includes 7 counties(LA, SD, ORANGE, SAC, RIVERSIDE, SAN BERN, BAY AREA).
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form \
+of the data? If so, why did you do this?
+
+> There was a sharp cutoff in the histogram of contribution amounts for values of $2700.  After this limit, far fewer counts were recorded.  I was expecting to see a distribition that resembled an exponential decay but there were also large spikes for contributions of 1000, 2000, and 2700.  
+
+> I used 'as.numeric' to convert the date values to numeric date values.  This allowed me to take the log of numeric date values for scaling purposes.
+
+# Bivariate Plots Section
+
+
+```{r echo=FALSE, Bivariate_Plots}
+## Plot Matrix
+# Load additional libraries
+library(GGally)
+library(scales)
+library(memisc)
+
+# sample 10,000 diamonds from the data set
+set.seed(20022012)
+new_CA <- subset(CA, 
+                 select=c(cand_nm, contb_receipt_amt, contb_receipt_dt, form_tp, file_num))
+
+CA_sample <- new_CA[sample(1:length(new_CA$contb_receipt_amt), 10000), ]
+
+View(head(new_CA, 200))
+
+# Make ggpairs plot, need to increase cardinality threshold parameter!?
+ggpairs(CA_sample, cardinality_threshold = 750, axisLabels = c("show", "internal", "none"),
+        lower = list(continuous = wrap("points", shape = I('.')), 
+                     combo = "facethist", discrete = "facetbar", na = "na"),
+        upper = list(continuous = wrap("cor"), combo = "box_no_facet", 
+                  discrete = "facetbar", na = "na"),
+        diag = list(continuous = "densityDiag", discrete = "barDiag", na = "naDiag"))
+
+# SCATTER PLOT OF AMOUNT VS FILENUM
+ggplot(aes(x = file_num, y = contb_receipt_amt), 
+       data = subset(CA, (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco')
+                     & CA$contb_receipt_amt > 0)) +
+  geom_point()
+
+# Make scatter plot of amount vs date
+ggplot(aes(x = contb_receipt_dt_date, y = contb_receipt_amt), 
+       data = CA) +
+  geom_point() 
+
+# amount vs date
+# Only included dates in 2015-2016
+# Only included amounts between -3000(refunds) and 3000.
+ggplot(aes(x = contb_receipt_dt_date, y = contb_receipt_amt), 
+       data = subset(CA, CA$year >= 2015 &
+                       (CA$contb_receipt_amt > 0) &
+                       (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco'))) +
+  geom_point() +
+  scale_y_continuous(limits = c(0, 10000))
+
+# Box Plot of amount vs cand_nm
+# We are looking at how categorical variables change with candidate names.
+ggplot(aes(x = cand_nm, y = contb_receipt_amt), 
+       data = subset(CA, (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco'))) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(0, 150))
+
+# Box Plot of Amount vs Occupation
+# I chose a few specific occupations
+ggplot(aes(x = contbr_occupation, y = contb_receipt_amt), 
+       data = subset(CA, CA$contbr_occupation == 'LAWYER'
+                     | CA$contbr_occupation == 'ATTORNEY'
+                     | CA$contbr_occupation == 'ENGINEER'
+                     | CA$contbr_occupation == 'SOFTWARE ENGINEER'
+                     | CA$contbr_occupation == 'DOCTOR'
+                     | CA$contbr_occupation == 'TEACHER')) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(0, 400))
+
+# Box Plot of Amount vs Employer
+# for a few employers
+ggplot(aes(x = contbr_employer, y = contb_receipt_amt), 
+       data = subset(CA, CA$contbr_employer == 'APPLE INC.'
+                     | CA$contbr_employer == 'GOOGLE'
+                     | CA$contbr_employer == 'FACEBOOK'
+                     | CA$contbr_employer == 'WELLS FARGO'
+                     | CA$contbr_employer == 'GENENTECH'
+                     | CA$contbr_employer == 'ORACLE CORP.'
+                     | CA$contbr_employer == 'AT&T'
+                     | CA$contbr_employer == 'NORTHROP GRUMMAN'
+                     | CA$contbr_employer == 'UNITED AIRLINES'
+                     | CA$contbr_employer == 'BANK OF AMERICA'
+                     | CA$contbr_employer == 'VISA, INC.'
+                     | CA$contbr_employer == 'DISNEY'
+                     | CA$contbr_employer == 'ORACLE CORP.'
+                     | CA$contbr_employer == 'WARNER BROS.'
+                     | CA$contbr_employer == 'U.S. NAVY'
+                     | CA$contbr_employer == '20TH CENTURY FOX')) +
+  geom_boxplot() +
+  scale_y_continuous(limits = c(0, 800))
+
+### Boxplot of amount vs. city
+### Then make a list of all cities in those counties
+
+LA <- c("AGOURA HILLS", "ALHAMBRA", "ARCADIA", "ARTESIA", "AVALON", "AZUSA", "BALDWIN PARK", "BELL", "BELL GARDENS", "BELLFLOWER", "BEVERLY HILLS", "BRADBURY", "BURBANK", "CALABASAS", "CARSON", "CERRITOS", "CLAREMONT", "COMMERCE", "COMPTON", "COVINA", "CUDAHY", "CULVER CITY", "DIAMOND BAR", "DOWNEY", "DUARTE", "EL MONTE", "EL SEGUNDO", "GARDENA", "GLENDALE", "GLENDORA", "HAWAIIAN GARDENS", "HAWTHORNE", "HERMOSA BEACH", "HIDDEN HILLS", "HUNTINGTON PARK", "INDUSTRY", "INGLEWOOD", "IRWINDALE", "LA CANADA FLINTRIDGE", "LA HABRA HEIGHTS", "LA MIRADA", "LA PUENTE", "LA VERNE", "LAKEWOOD", "LANCASTER", "LAWNDALE", "LOMITA", "LONG BEACH", "LOS ANGELES", "LYNWOOD", "MALIBU", "MANHATTAN BEACH", "MAYWOOD", "MONROVIA", "MONTEBELLO", "MONTEREY PARK", "NORWALK", "PALMDALE", "PALOS VERDES ESTATES", "PARAMOUNT", "PASADENA", "PICO RIVERA", "POMONA", "RANCHO PALOS VERDES", "REDONDO BEACH", "ROLLING HILLS", "ROLLING HILLS ESTATES", "ROSEMEAD", "SAN DIMAS", "SAN FERNANDO", "SAN GABRIEL", "SAN MARINO", "SANTA CLARITA", "SANTA FE SPRINGS", "SANTA MONICA", "SIERRA MADRE", "SIGNAL HILL", "SOUTH EL MONTE", "SOUTH GATE", "SOUTH PASADENA", "TEMPLE CITY", "TORRANCE", "VERNON", "WALNUT", "WEST COVINA", "WEST HOLLYWOOD", "WESTLAKE VILLAGE", "WHITTIER")
+
+SD <- c("CARLSBAD", "CHULA VISTA", "CORONADO", "DEL MAR", "EL CAJON", "ENCINITAS", "ESCONDIDO", "IMPERIAL BEACH", "LA MESA", "LEMON GROVE", "NATIONAL CITY", "OCEANSIDE", "POWAY", "SAN DIEGO", "SAN MARCOS", "SANTEE", "SOLANA BEACH", "VISTA")
+
+ORANGE <- c("ALISO VIEJO", "ANAHEIM", "BREA", "BUENA PARK", "COSTA MESA", "CYPRESS", "DANA POINT", "FOUNTAIN VALLEY", "FULLERTON", "GARDEN GROVE", "HUNTINGTON BEACH", "IRVINE", "LA HABRA", "LA PALMA", "LAGUNA BEACH", "LAGUNA HILLS", "LAGUNA NIGUEL", "LAGUNA WOODS", "LAKE FOREST", "LOS ALAMITOS", "MISSION VIEJO", "NEWPORT BEACH", "ORANGE", "PLACENTIA", "RANCHO SANTA MARGARITA", "SAN CLEMENTE", "SAN JUAN CAPISTRANO", "SANTA ANA", "SEAL BEACH", "STANTON", "TUSTIN", "VILLA PARK", "WESTMINSTER", "YORBA LINDA")
+
+SAC <- c("CITRUS HEIGHTS", "ELK GROVE", "FOLSOM", "GALT", "ISLETON", "RANCHO CORDOVA", "SACRAMENTO")
+
+BAY_AREA <- c("ALAMEDA", "ALBANY", "AMERICAN CANYON", "ANTIOCH", "ATHERTON", "BELMONT", "BELVEDERE", "BENICIA", "BERKELEY", "BRENTWOOD", "BRISBANE", "BURLINGAME", "CALISTOGA", "CAMPBELL", "CLAYTON", "CLOVERDALE", "COLMA", "CONCORD", "CORTE MADERA", "COTATI", "CUPERTINO", "DALY CITY", "DANVILLE", "DIXON", "DUBLIN", "EAST PALO ALTO", "EL CERRITO", "EMERYVILLE", "FAIRFAX", "FAIRFIELD", "FOSTER CITY", "FREMONT", "GILROY", "HALF MOON BAY", "HAYWARD", "HEALDSBURG", "HERCULES", "HILLSBOROUGH", "LAFAYETTE", "LARKSPUR", "LIVERMORE", "LOS ALTOS", "LOS ALTOS HILLS", "LOS GATOS", "MARTINEZ", "MENLO PARK", "MILL VALLEY", "MILLBRAE", "MILPITAS", "MONTE SERENO", "MORAGA", "MORGAN HILL", "MOUNTAIN VIEW", "NAPA", "NEWARK", "NOVATO", "OAKLAND", "OAKLEY", "ORINDA", "PACIFICA", "PALO ALTO", "PETALUMA", "PIEDMONT", "PINOLE", "PITTSBURG", "PLEASANT HILL", "PLEASANTON", "PORTOLA VALLEY", "REDWOOD CITY", "RICHMOND", "RIO VISTA", "ROHNERT PARK", "ROSS", "ST. HELENA", "SAN ANSELMO", "SAN BRUNO", "SAN CARLOS", "SAN FRANCISCO", "SAN JOSE", "SAN LEANDRO", "SAN MATEO", "SAN PABLO", "SAN RAFAEL", "SAN RAMON", "SANTA CLARA", "SANTA ROSA", "SARATOGA", "SAUSALITO", "SEBASTOPOL", "SONOMA", "SOUTH SAN FRANCISCO", "SUISUN CITY", "SUNNYVALE", "TIBURON", "UNION CITY", "VACAVILLE", "VALLEJO", "WALNUT CREEK", "WINDSOR", "WOODSIDE", "YOUNTVILLE")
+
+RIVERSIDE <- c("BANNING", "BEAUMONT", "BLYTHE", "CALIMESA", "CANYON LAKE", "CATHEDRAL CITY", "COACHELLA", "CORONA", "DESERT HOT SPRINGS", "EASTVALE", "HEMET", "INDIAN WELLS", "INDIO", "JURUPA VALLEY", "LAKE ELSINORE", "LA QUINTA", "MENIFEE", "MORENO VALLEY", "MURRIETA", "NORCO", "PALM DESERT", "PALM SPRINGS", "PERRIS", "RANCHO MIRAGE", "RIVERSIDE", "SAN JACINTO", "TEMECULA", "WILDOMAR")
+
+SAN_BERN <- c("ADELANTO", "APPLE VALLEY", "BARSTOW", "BIG BEAR LAKE", "CHINO", "CHINO HILLS", "COLTON", "CRESTLINE", "FONTANA", "GRAND TERRACE", "HESPERIA", "HIGHLAND", "JOSHUA TREE", "LAKE ARROWHEAD", "LOMA LINDA", "LUCERNE VALLEY", "MONTCLAIR", "NEEDLES", "ONTARIO", "RANCHO CUCAMONGA", "REDLANDS", "RIALTO", "RUNNING SPRINGS", "SAN BERNARDINO", "TWENTYNINE PALMS", "UPLAND", "VICTORVILLE", "WRIGHTWOOD", "YERMO", "YUCAIPA", "YUCCA VALLEY")
+
+### create columns for each region
+
+CA$contbr_county <- ifelse(CA$contbr_city %in% LA, "LA",
+                    ifelse(CA$contbr_city %in% SD, "SD",
+                    ifelse(CA$contbr_city %in% ORANGE, "ORANGE",
+                    ifelse(CA$contbr_city %in% SAC, "SAC",
+                    ifelse(CA$contbr_city %in% BAY_AREA, "BAY AREA",
+                    ifelse(CA$contbr_city %in% RIVERSIDE, "RIVERSIDE",
+                    ifelse(CA$contbr_city %in% SAN_BERN, "SAN BERN", "NULL")))))))
+
+### Boxplot of amount vs county
+
+ggplot(aes(x = contbr_county, y = contb_receipt_amt), 
+       data = subset(CA, (CA$contbr_county != "NULL") & 
+                       (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco'))) +
+  geom_boxplot()
+```
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. How did the feature(s) of interest vary with other features in \
+the dataset?
+
+> My scatter plot of amount vs. date again showed that most contributions were less than or equal to 2700.  There were a few contributions near 10000 in late 2015 and early 2016.  Bernie Sanders and Hillary Clinton had the lowest mean contributions.  Marco Rubio had the highest average contribution.  When I compared the contributions made from 6 white collar professions, Doctors and Lawyers had the highest average contributions.  When I compared contributions from employees at specific companies, Facebook, Genentech and Google had the highest average contributions.  Visa had the lowest average contribution.
+
+### Did you observe any interesting relationships between the other features \
+(not the main feature(s) of interest)?  
+
+> I made a boxplot of amount vs. county for 7 counties in california(LA, SD, ORANGE, SAC, RIVERSIDE, SAN BERN, BAY AREA).  The means, first and third quartiles for all 7 counties were very close together.  Riverside, San Bernardino, Sacramento, and San Diego had smaller contribution amounts.  Bay Area cities and Los Angeles had the highest contributions amounts.
+
+### What was the strongest relationship you found? 
+
+> The boxplot of amount vs. contbr_employer showed the most variation in mean contribution amounts.  Employees of entertainment companies like 20th Century Fox and Disney appeared to have lower mean and max contributions.  Employees at financial companies like Bank of America and Visa appeared to give less money as well, however, Wells Fargo employees had higher max contributions.  Of the large companies I selected, Google, Facebook and Apple employees gave the most money. 
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, Multivariate_Plots}
+
+### Add column for cumulative sum of amount, group by cand name and date
+### This gives me the total contribution SO FAR, for each candidate on each date
+CA$total_contbr <- ave(CA$contb_receipt_amt, CA$cand_nm, CA$contb_receipt_dt_date, FUN=cumsum)
+
+### Add column for max of total contribution
+### This gives me the MAX of total contribution for each candidate on each date
+CA$max_total_contbr <- ave(CA$total_contbr, CA$cand_nm, CA$contb_receipt_dt_date, FUN=max)
+
+### Need to sum over industries and counties
+### Add column for cumulative sum of amount, group by industry and date
+### This gives me the total contribution SO FAR, for each industry on each date
+CA$total_contbr_industry <- ave(CA$contb_receipt_amt, CA$contbr_industry, CA$contb_receipt_dt_date, FUN=cumsum)
+
+### Add column for max of total contribution
+### This gives me the MAX of total contribution for each industry on each date
+CA$max_total_contbr_industry <- ave(CA$total_contbr_industry, CA$contbr_industry, CA$contb_receipt_dt_date, FUN=max)
+
+### Add column for cumulative sum of amount, group by county and date
+### This gives me the total contribution SO FAR, for each county on each date
+CA$total_contbr_county <- ave(CA$contb_receipt_amt, CA$contbr_county, CA$contb_receipt_dt_date, FUN=cumsum)
+
+### Add column for max of total contribution
+### This gives me the MAX of total contribution for each county on each date
+CA$max_total_contbr_county <- ave(CA$total_contbr_county, CA$contbr_county, CA$contb_receipt_dt_date, FUN=max)
+
+# Test
+#View(subset(CA, CA$year == 2015 & CA$month == 11 & CA$day == 1))
+
+# Line Plot of Max Total Contributions vs Date, grouped by candidate name.
+ggplot(subset(CA, (CA$contb_receipt_amt > 0) & 
+                (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\'')),  aes(contb_receipt_dt_date, max_total_contbr, colour = cand_nm)) +
+  geom_line() 
+
+# SMOOTH LINE Plot of Max Total Contributions vs Date, grouped by candidate name.
+ggplot(subset(CA, (CA$max_total_contbr > 0) & 
+                (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\'')),  aes(contb_receipt_dt_date, max_total_contbr, colour = cand_nm)) +
+  stat_smooth(formula = y ~ poly(x,3)) +
+  scale_y_continuous(limits = c(0, max(CA$max_total_contbr)))
+
+### Line plot of max contributions vs date, grouped by job title
+### Create vectors for each 'job field' for selected jobs
+WHITE_COLLAR <- c("ENGINEER", "SOFTWARE ENGINEER", "SOFTWARE DEVELOPER", "WEB DEVELOPER",
+              "IT", "ARCHITECT", "SCIENTIST", "RESEARCHER", "PHYSICIAN", "REGISTERED NURSE",               "NURSE", "RN", "PHARMACIST", "NURSE PRACTITIONER", "DENTIST", "DOCTOR", "MD",                "PSYCHOLOGIST", "LAWYER", "ATTORNEY", "PARALEGAL", "JUDGE ADVOCATE", "JUDGE",
+              "SALES", "SALES MANAGER", "ANALYST", "MARKETING", "CONSULTANT", "REALTOR",
+              "DESIGNER", "PROJECT MANAGER", "ADMINISTRATOR", "REAL ESTATE",
+              "HUMAN RESOURCES", "PROPERTY MANAGER", "REAL ESTATE BROKER", "ACCOUNTANT",
+              "FINANCE", "CPA", "INVESTOR", "BANKER", "CEO", "CFO", "PRESIDENT", 
+              "VICE PRESIDENT", "EXECUTIVE", "TEACHER", "PROFESSOR", "COLLEGE PROFESSOR",                  "EDUCATOR", "BEHAVIORAL THERAPIST", "PHYSICAL THERAPIST", "LECTURER",
+              "MATHEMATICS INSTRUCTOR", "BUSINESS DEVELOPMENT", "BIOLOGIST", "SOCIAL WORKER",               "DATA ENTRY", "SURGEON", "DATABASE ADMINISTRATOR", "GAME DEVELOPER",
+              "CHIEF FINANCIAL OFFICER", "DATA SCIENTIST", "DEV-OPS ENGINEER",
+              "AEROSPACE ENGINEER")
+
+BLUE_COLLAR <- c("BUSINESS OWNER", "SMALL BUSINESS OWNER", "OWNER", "ENTREPRENEUR", 
+            "SELF EMPLOYED", "FARMER", "TRUCK DRIVER", "DRIVER", "CONTRACTOR", "BOOKKEEPER",
+            "CLERICAL", "SHOP OWNER", "HOMEMAKER", "LABORER", "DELIVERY DRIVER", "SECRETARY",
+            "TSA OFFICER", "SALON/SPA", "FORKLIFT DRIVER", "DATA ENTRY", "COOK",
+            "SECURITY GUARD", "ELECTRICIAN", "ASSISTANT MANAGER", "RETAIL SALES", "DEALER",
+            "CUSTOMER SERVICE", "FLIGHT ATTENDANT", "FIRE FIGHTER", "CARPENTER", "RANCHER")
+
+STUDENT <- c("STUDENT", "GRADUATE STUDENT")
+
+UNEMPLOYED <- c("DISABLED", "NOT EMPLOYED", "RETIRED", "UNEMPLOYED BECAUSE OF OBAMACARE")
+
+MILITARY <- c("U.S. NAVY", "UNITED STATES NAVY", "NAVY", "DEPT. OF NAVY",
+              "DEPARTMENT OF NAVY", "DEPARTMENT OF THE NAVY", "U.S. DEPARTMENT OF THE NAVY",
+              "NAVY FEDERAL CREDIT UNION", "USNAVY", "U.S. ARMY", "ARMY", "US ARMY",
+              "U.S. DEPARTMENT OF THE ARMY", "U.S. ARMY CORPS. OF ENGINEERS",
+              "DEPT OF ARMY", "U S ARMY", "U.S. COAST GUARD", "US COAST GUARD",
+              "UNITED STATES COAST GUARD", "U.S. DEPARTMENT OF THE COAST GUARD",
+              "DOD", "D.O.D.")
+
+### Create 'job field' column.  If contbr_occupation is in a job field vector from above,
+### add the name of the vector to 'job field' column
+CA$contbr_industry <- ifelse(CA$contbr_occupation %in% WHITE_COLLAR, "WHITE COLLAR",
+                      ifelse(CA$contbr_occupation %in% BLUE_COLLAR, "BLUE COLLAR",
+                      ifelse(CA$contbr_occupation %in% STUDENT, "STUDENT",
+                      ifelse(CA$contbr_occupation %in% UNEMPLOYED, "UNEMPLOYED",
+                      ifelse(CA$contbr_employer %in% MILITARY, "MILITARY","NULL")))))
+# Test
+#View(head(CA, 200))
+
+### Now I can plot max contributions vs date, grouped by contbr_industry
+### The y values were very close together, I'm playing with the
+### y scaling and color brewer options
+ggplot(subset(CA, (CA$contb_receipt_amt > 0) & 
+                (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\'') &
+                (CA$contbr_industry != "NULL")),
+                aes(contb_receipt_dt_date, max_total_contbr, colour = contbr_industry)) +
+  stat_smooth(se = FALSE, span = 0.01) +
+  scale_y_continuous(limits = c(0, max(CA$max_total_contbr))) +
+  scale_colour_brewer(palette = "Spectral") +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+
+### Max contributions vs date, grouped by contbr_industry, facet wrapped by cand_nm
+ggplot(subset(CA, (CA$contb_receipt_amt > 0) & 
+                (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\'') &
+                (CA$contbr_industry != "NULL")),
+                aes(contb_receipt_dt_date, max_total_contbr, colour = contbr_industry)) +
+  stat_smooth(se = FALSE, span = 0.01) +
+  facet_wrap(~ cand_nm, scales = "free") +
+  scale_colour_brewer(palette = "Spectral") +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+
+### Max contributions vs date, grouped by contbr_occupation for chosen occupations
+ggplot(subset(CA, (CA$contb_receipt_amt > 0) & 
+                (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\'') &
+                (CA$contbr_occupation == 'U.S. NAVY'
+                     | CA$contbr_occupation == 'CUSTOMER SERVICE'
+                     | CA$contbr_occupation == 'STUDENT'
+                     | CA$contbr_occupation == 'SOFTWARE ENGINEER'
+                     | CA$contbr_occupation == 'RETIRED')),
+                aes(contb_receipt_dt_date, max_total_contbr, colour = contbr_occupation)) +
+  stat_smooth(se = FALSE, span = 0.01) +
+  scale_y_continuous(limits = c(0, max(CA$max_total_contbr))) +
+  scale_colour_brewer(palette = "Spectral") +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+
+
+### Amount vs Date, colored by contbr_industry, facet wrapped by cand_nm
+ggplot(aes(x = contb_receipt_dt_date, y = contb_receipt_amt), 
+       data = subset(CA, CA$year >= 2015 &
+                       (CA$contb_receipt_amt > 0) &
+                       (CA$contbr_industry != "NULL") &
+                       (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco'))) +
+  geom_point(aes(colour = contbr_industry, alpha = 0.001)) +
+  scale_colour_brewer(palette = "Spectral") +
+  facet_wrap(~ cand_nm, scales = "free") +
+  scale_y_continuous(limits = c(0, 10000)) +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+
+#View(subset(CA, CA$contb_receipt_amt > 9000))
+
+# Amount vs Date, colored by candidate name, facet wrapped by employer
+ggplot(aes(x = contb_receipt_dt_date, y = contb_receipt_amt), 
+       data = subset(CA, CA$year >= 2015 &
+                       (CA$contb_receipt_amt > 0) &
+                       (CA$contbr_employer == 'GOOGLE'
+                     | CA$contbr_employer == 'FACEBOOK'
+                     | CA$contbr_employer == 'WELLS FARGO'
+                     | CA$contbr_employer == 'GENENTECH'
+                     | CA$contbr_employer == 'AT&T'
+                     | CA$contbr_employer == 'NORTHROP GRUMMAN'
+                     | CA$contbr_employer == 'UNITED AIRLINES'
+                     | CA$contbr_employer == 'BANK OF AMERICA'
+                     | CA$contbr_employer == 'DISNEY'
+                     | CA$contbr_employer == 'WARNER BROS.'
+                     | CA$contbr_employer == 'U.S. NAVY') &
+                       (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''))) +
+  geom_point(aes(colour = cand_nm)) +
+  scale_colour_brewer(palette = "Spectral") +
+  facet_wrap(~ contbr_employer, scales = "free") +
+  scale_y_continuous(limits = c(0, 5000)) +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+
+### Exploring correlation between date and max contribution over categorical variables.
+
+# scatter plot of date vs max contrib, colored by cand_nm
+# As max contribution values increase, they show up on fewer dates
+# and those dates are later in the time period.
+
+# Add column that converts date to numeric value
+
+CA$numeric_date <- as.numeric(CA$contb_receipt_dt_date)
+#View(head(CA, 25))
+
+ggplot(subset(CA, (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco')),  
+       aes(x = max_total_contbr, y = numeric_date, colour = cand_nm)) +
+  geom_point() +
+  scale_y_log10() +
+  scale_colour_brewer(palette = "Spectral") +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+
+
+## Scatter plot of date vs max contribution, colored by contbr_industry
+ggplot(subset(CA, (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco') &
+                CA$contbr_industry != 'NULL'),  
+       aes(x = max_total_contbr_industry, y = numeric_date, colour = contbr_industry)) +
+  geom_point() +
+  scale_y_log10() +
+  scale_colour_brewer(palette = "Spectral") +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+
+## Scatter plot of date vs max contribution, colored by contbr_county
+
+ggplot(subset(CA, (CA$cand_nm == 'Clinton, Hillary Rodham'
+                     | CA$cand_nm == 'Sanders, Bernard'
+                     | CA$cand_nm == 'Trump, Donald J.'
+                     | CA$cand_nm == 'Cruz, Rafael Edward \'Ted\''
+                     | CA$cand_nm == 'Carson, Benjamin S.'
+                     | CA$cand_nm == 'Rubio, Marco') &
+                CA$contbr_county != 'NULL'),  
+       aes(x = max_total_contbr_county, y = numeric_date, colour = contbr_county)) +
+  geom_point() +
+  scale_y_log10() +
+  scale_colour_brewer(palette = "Spectral") +
+  theme(panel.background = element_rect(fill = "grey66"),
+        panel.grid.major = element_line(colour = "grey50"),
+        panel.grid.minor = element_line(colour = "grey60"))
+```
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the \
+investigation. Were there features that strengthened each other in terms of \
+looking at your feature(s) of interest?
+
+> The line plot of max total contributions vs. date shows only very small contributions to Trump's campaign prior to June 2016.  During this time, Ted Cruz had the majority of Republican contributions.   After June 2016 the contributions per day to Trump's campaign increased.
+
+> The smooth line plot of max total contributions vs. date, colored by contbr_industry and facet wrapped by cand_nm showed very little difference between the contributions made by blue collar, white collar, unemployed, student or military contributors.
+
+> The smooth line plot of max total contributions vs. date, colored by occupation showed all chosen occupations making more contributions as the election date approached.  People who were retired gave cumulatively less per date while people with the title of software engineer, customer service or student, oscillated up and down while steadily increasing.
+
+> The scatterplot of amount vs. date, colored by contbr_industry and facet wrapped by cand_nm showed a large number of white collar contributors to Hillary Clinton's campaign.  I was surprised to see a similar distribution of industry for contributors to Bernie Sanders and Donald Trump.  Both appeared to have a similar distribution of blue collar, unemployed, and white collar contributors.  Ben Carson, Ted Cruz, and Donald Trump had fewer white collar contributors.  Marco Rubio had a more even spread between blue collar, white collar and unemployed.
+
+> The scatterplot of amount vs. date, colored by cand_nm and facet wrapped by employer showed many of the selected companies to be dominated by Hillary Clinton supporters.  Wells Fargo, United Airlines, Northrup Grumman, and AT&T held the most politically diverse employees.
+
+> I converted date to a numeric value and explored the correlation between max contribution and the log of the numerical date over categorical variables such as cand_nm, contbr_industry, and contbr_county.  Larger totals for daily contributions appeared closer to the election date and were mostly made to Hillary Clinton.  Donald Trump did not receive visible daily total contributions until near the election date and most of them were under 250000.  Smaller cumulative contributions per date for my selected industries came from military employees and students.  The largest sums per date were from white collar employees but there were many large sums per date from unemployed people.  It's possible that some of them simply put unemployed on their form as a means of opting out from disclosing private information.  The highest cumulative contributions per date for my selected counties were from the San Francisco Bay Area or Los Angeles County.  Orange County and San Diego County were close behind.  
+
+### Were there any interesting or surprising interactions between features?
+
+
+------
+
+# Final Plots and Summary
+
+> **Tip**: You've done a lot of exploration and have built up an understanding
+of the structure of and relationships between the variables in your dataset.
+Here, you will select three plots from all of your previous exploration to
+present here as a summary of some of your most interesting findings. Make sure
+that you have refined your selected plots for good titling, axis labels (with
+units), and good aesthetic choices (e.g. color, transparency). After each plot,
+make sure you justify why you chose each plot by describing what it shows.
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+```
+
+### Description One
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### Description Two
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### Description Three
+
+------
+
+# Reflection
+
+> **Tip**: Here's the final step! Reflect on the exploration you performed and
+the insights you found. What were some of the struggles that you went through?
+What went well? What was surprising? Make sure you include an insight into
+future work that could be done with the dataset.
+
+> **Tip**: Don't forget to remove this, and the other **Tip** sections before
+saving your final work and knitting the final report!

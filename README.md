@@ -7,5 +7,5 @@ contributions.  Because most of the variables are categorical, I had to create
 new variables from existing ones.  This dataset consists of 18 variables with 
 1304346 observations. 
 
-I have included the R markdown file, knitted html file, and R copy of the markdown file.
+I have included the R markdown file and knitted html file.
 

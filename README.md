@@ -1,2 +1,9 @@
-# Contributions-to-Presidential-Candidates
-1.3 million contributions to presidential candidates for the 2016 election.  There were 18 variables in my dataset.
+# Financial Contributions Made to Presidential Candidates by Aaron Gruberg
+
+I downloaded a csv file of contributions made to presidential candidates from 
+Californians for the 2016 election.  I looked at how the money was distributed 
+among candidates and which occupations and cities made the largest 
+contributions.  Because most of the variables are categorical, I had to create
+new variables from existing ones.  This dataset consists of 18 variables with 
+1304346 observations. 
+

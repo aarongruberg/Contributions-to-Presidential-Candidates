@@ -8,5 +8,5 @@ contributions.  Because most of the variables are categorical, I had to create
 new variables from existing ones.  This dataset consists of 18 variables with 
 1304346 observations. 
 
-I have included the R markdown file and knitted html file.
+The file 'CA.Rmd' is my R code.  To view all visualizations and analysis, please download this repo and open 'CA.html'.
 
